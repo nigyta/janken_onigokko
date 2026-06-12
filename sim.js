@@ -130,6 +130,19 @@ class Simulation {
       agent.x = Math.min(Math.max(agent.x + dir.x * agent.speed * dt, 0), FIELD_WIDTH);
       agent.y = Math.min(Math.max(agent.y + dir.y * agent.speed * dt, 0), FIELD_HEIGHT);
     }
+
+    // 捕獲判定: 全ペアを収集してから一括除外する。
+    // 「AがBを捕まえる瞬間にCもAを捕まえる」場合は両方有効(同時とみなす)。
+    // 判定順序による不公平をなくすため
+    const caught = new Set();
+    const alive = this.agents.filter((a) => a.alive);
+    for (const hunter of alive) {
+      for (const prey of alive) {
+        if (CATCHES[hunter.group] !== prey.group) continue;
+        if (hunter.distanceTo(prey) < CAPTURE_RADIUS) caught.add(prey);
+      }
+    }
+    for (const a of caught) a.alive = false;
   }
 }
 

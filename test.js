@@ -161,3 +161,45 @@ test('tick: dt は MAX_DT(0.1秒)にクランプされる', () => {
   assert.ok(Math.abs(hunter.x - 101) < 1e-9, `x=${hunter.x}`); // 0.1秒ぶんしか動かない
   assert.ok(Math.abs(sim.timeLeft - 59.9) < 1e-9, `timeLeft=${sim.timeLeft}`);
 });
+
+test('捕獲: 捕獲半径内の捕食関係は捕まる(捕まえた側は残る)', () => {
+  const sim = makeEmptySim();
+  const hunter = new Agent('gu', 100, 100, 0);
+  const prey = new Agent('choki', 110, 100, 0); // 距離10 < CAPTURE_RADIUS(16)
+  sim.agents.push(hunter, prey);
+  sim.tick(0.001);
+  assert.strictEqual(prey.alive, false);
+  assert.strictEqual(hunter.alive, true);
+});
+
+test('捕獲: 捕食関係がなければ捕まらない', () => {
+  const sim = makeEmptySim();
+  const a = new Agent('gu', 100, 100, 0);
+  const b = new Agent('gu', 110, 100, 0); // 同グループ同士
+  sim.agents.push(a, b);
+  sim.tick(0.001);
+  assert.strictEqual(a.alive, true);
+  assert.strictEqual(b.alive, true);
+});
+
+test('捕獲: 捕獲半径より遠ければ捕まらない', () => {
+  const sim = makeEmptySim();
+  const hunter = new Agent('gu', 100, 100, 0);
+  const prey = new Agent('choki', 120, 100, 0); // 距離20 >= 16
+  sim.agents.push(hunter, prey);
+  sim.tick(0.001);
+  assert.strictEqual(prey.alive, true);
+});
+
+test('捕獲: 同一フレームの同時捕獲は両方有効', () => {
+  const sim = makeEmptySim();
+  const gu = new Agent('gu', 100, 100, 0);
+  const choki = new Agent('choki', 110, 100, 0); // gu との距離10
+  const pa = new Agent('pa', 90, 100, 0);        // gu との距離10、choki との距離20
+  sim.agents.push(gu, choki, pa);
+  sim.tick(0.001);
+  // gu は choki を捕まえ、同時に pa は gu を捕まえる(両方有効)
+  assert.strictEqual(choki.alive, false);
+  assert.strictEqual(gu.alive, false);
+  assert.strictEqual(pa.alive, true);
+});
