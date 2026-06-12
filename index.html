@@ -95,6 +95,7 @@ function draw(sim) {
   ctx.font = '24px serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#fff'; // 絵文字はカラーフォント描画だが、明示してプラットフォーム差異を避ける
   ctx.shadowBlur = 12;
   for (const a of sim.agents) {
     if (!a.alive) continue;
@@ -102,6 +103,7 @@ function draw(sim) {
     ctx.fillText(EMOJI[a.group], a.x, a.y);
   }
   ctx.shadowBlur = 0;
+  ctx.shadowColor = 'transparent';
 }
 
 // ---- UIController ----
@@ -132,13 +134,18 @@ function readParams() {
 let sim = null;
 let running = false;
 let lastTime = null;
+let rafId = null; // 実行中の requestAnimationFrame の ID(二重ループ防止)
 
-function updateStatus() {
+function updateCounts() {
   const counts = sim.aliveCounts();
-  $('timer').textContent = `⏱ 残り ${sim.timeLeft.toFixed(1)} 秒`;
   $('countGu').textContent = counts.gu;
   $('countChoki').textContent = counts.choki;
   $('countPa').textContent = counts.pa;
+}
+
+function updateStatus() {
+  updateCounts();
+  $('timer').textContent = `⏱ 残り ${sim.timeLeft.toFixed(1)} 秒`;
 }
 
 function showOverlay() {
@@ -167,23 +174,26 @@ function loop(t) {
     showOverlay();
     return;
   }
-  requestAnimationFrame(loop);
+  rafId = requestAnimationFrame(loop);
 }
 
 function start() {
+  if (rafId !== null) cancelAnimationFrame(rafId); // 既存ループを止めて二重実行を防ぐ
   sim = new Simulation(readParams());
   running = true;
   lastTime = null;
   $('overlay').style.display = 'none';
-  requestAnimationFrame(loop);
+  rafId = requestAnimationFrame(loop);
 }
 
 function reset() {
+  if (rafId !== null) cancelAnimationFrame(rafId);
   running = false;
   $('overlay').style.display = 'none';
   sim = new Simulation(readParams());
   draw(sim);
-  updateStatus();
+  updateCounts();
+  $('timer').textContent = '⏱ ─'; // 開始前はタイマーを表示しない
 }
 
 $('startBtn').addEventListener('click', start);
