@@ -2,7 +2,7 @@
 
 // グループ定義: グー→チョキ→パー→グー の三すくみ
 const GROUPS = ['gu', 'choki', 'pa'];
-const CATCHES = { gu: 'choki', choki: 'pa', pa: 'gu' };   // 自分が捕まえられる相手
+const CATCHES = { gu: 'choki', choki: 'pa', pa: 'gu' };   // 自分が捕まえに行く相手(獲物)
 const CAUGHT_BY = { choki: 'gu', pa: 'choki', gu: 'pa' }; // 自分を捕まえる相手
 
 const FIELD_WIDTH = 800;   // 盤面の論理幅 px
