@@ -74,10 +74,51 @@ class Agent {
   }
 }
 
+class Simulation {
+  // params: { n, duration, meanSpeed, speedSd } / rand はテスト用に注入可能
+  constructor(params, rand = Math.random) {
+    this.params = params;
+    this.rand = rand;
+    this.timeLeft = params.duration;
+    this.finished = false;
+    this.winner = null; // グループ識別子 | 'draw' | null(進行中)
+    this.agents = [];
+
+    // 3グループを離れた3エリアに配置(開始直後の即捕獲を防ぐ)
+    // 左上=グー、右上=チョキ、下中央=パー(各エリアは盤面の1/4サイズ)
+    const areas = {
+      gu:    { x: 0,               y: 0,                w: FIELD_WIDTH / 2, h: FIELD_HEIGHT / 2 },
+      choki: { x: FIELD_WIDTH / 2, y: 0,                w: FIELD_WIDTH / 2, h: FIELD_HEIGHT / 2 },
+      pa:    { x: FIELD_WIDTH / 4, y: FIELD_HEIGHT / 2, w: FIELD_WIDTH / 2, h: FIELD_HEIGHT / 2 },
+    };
+    for (const group of GROUPS) {
+      const area = areas[group];
+      for (let i = 0; i < params.n; i++) {
+        const x = area.x + this.rand() * area.w;
+        const y = area.y + this.rand() * area.h;
+        const speed = Math.max(
+          randNormal(params.meanSpeed, params.speedSd, this.rand),
+          MIN_SPEED
+        );
+        this.agents.push(new Agent(group, x, y, speed));
+      }
+    }
+  }
+
+  // グループごとの生存者数 { gu, choki, pa }
+  aliveCounts() {
+    const counts = { gu: 0, choki: 0, pa: 0 };
+    for (const a of this.agents) {
+      if (a.alive) counts[a.group]++;
+    }
+    return counts;
+  }
+}
+
 // Node のテストから読めるようにする(ブラウザでは module が無いため無視される)
 if (typeof module !== 'undefined') {
   module.exports = {
-    randNormal, Agent,
+    randNormal, Agent, Simulation,
     GROUPS, CATCHES, CAUGHT_BY,
     FIELD_WIDTH, FIELD_HEIGHT, CAPTURE_RADIUS, MIN_SPEED, MAX_DT, FLEE_WEIGHT,
   };

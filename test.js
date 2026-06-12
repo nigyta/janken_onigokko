@@ -95,3 +95,35 @@ test('direction: 獲物も脅威もいなければ null(その場で停止)', ()
   const me = new Agent('gu', 100, 100, 10);
   assert.strictEqual(me.direction([me]), null);
 });
+
+test('Simulation: 各グループ N 人ずつ生成され、初期状態が正しい', () => {
+  const sim = new Simulation({ n: 10, duration: 60, meanSpeed: 80, speedSd: 15 });
+  assert.strictEqual(sim.agents.length, 30);
+  assert.deepStrictEqual(sim.aliveCounts(), { gu: 10, choki: 10, pa: 10 });
+  assert.strictEqual(sim.timeLeft, 60);
+  assert.strictEqual(sim.finished, false);
+  assert.strictEqual(sim.winner, null);
+});
+
+test('Simulation: 初期配置は各グループの担当エリア内', () => {
+  const sim = new Simulation({ n: 30, duration: 60, meanSpeed: 80, speedSd: 15 });
+  // 左上=グー、右上=チョキ、下中央=パー(各エリアは盤面の1/4サイズ)
+  const areas = {
+    gu:    { x0: 0,   y0: 0,   x1: 400, y1: 300 },
+    choki: { x0: 400, y0: 0,   x1: 800, y1: 300 },
+    pa:    { x0: 200, y0: 300, x1: 600, y1: 600 },
+  };
+  for (const a of sim.agents) {
+    const ar = areas[a.group];
+    assert.ok(a.x >= ar.x0 && a.x <= ar.x1, `${a.group} x=${a.x}`);
+    assert.ok(a.y >= ar.y0 && a.y <= ar.y1, `${a.group} y=${a.y}`);
+  }
+});
+
+test('Simulation: 速度は正規分布から生成され最低速度でクランプされる', () => {
+  // 標準偏差を極端に大きくして負の値が出る状況を作る
+  const sim = new Simulation({ n: 100, duration: 60, meanSpeed: 10, speedSd: 1000 });
+  for (const a of sim.agents) {
+    assert.ok(a.speed >= MIN_SPEED, `speed=${a.speed}`);
+  }
+});
