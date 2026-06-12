@@ -113,6 +113,22 @@ class Simulation {
     }
     return counts;
   }
+
+  // dt 秒ぶんシミュレーションを進める(移動のみ。捕獲・終了判定は後続タスクで追加)
+  tick(dt) {
+    if (this.finished) return;
+    dt = Math.min(dt, MAX_DT);
+    this.timeLeft -= dt;
+
+    // 移動(壁の内側にクランプ)
+    for (const agent of this.agents) {
+      if (!agent.alive) continue;
+      const dir = agent.direction(this.agents);
+      if (!dir) continue;
+      agent.x = Math.min(Math.max(agent.x + dir.x * agent.speed * dt, 0), FIELD_WIDTH);
+      agent.y = Math.min(Math.max(agent.y + dir.y * agent.speed * dt, 0), FIELD_HEIGHT);
+    }
+  }
 }
 
 // Node のテストから読めるようにする(ブラウザでは module が無いため無視される)
