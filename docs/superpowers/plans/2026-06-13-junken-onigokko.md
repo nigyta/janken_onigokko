@@ -537,6 +537,8 @@ Expected: FAIL — `sim.tick is not a function`
 
 ```js
   // dt 秒ぶんシミュレーションを進める(移動のみ。捕獲・終了判定は後続タスクで追加)
+  // 注: 移動は配列順の逐次更新(意図的な選択)。スナップショット一括更新との差は
+  // 1フレームあたり最大数px で知覚不能なため、毎フレームの複製コストを避け単純さを優先
   tick(dt) {
     if (this.finished) return;
     dt = Math.min(dt, MAX_DT);
