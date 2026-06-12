@@ -114,7 +114,7 @@ class Simulation {
     return counts;
   }
 
-  // dt 秒ぶんシミュレーションを進める(移動 → 捕獲判定。終了判定は後続タスクで追加)
+  // dt 秒ぶんシミュレーションを進める(移動 → 捕獲判定 → 終了判定)
   // 注: 移動は配列順の逐次更新(意図的な選択)。スナップショット一括更新との差は
   // 1フレームあたり最大数px で知覚不能なため、毎フレームの複製コストを避け単純さを優先
   tick(dt) {
@@ -143,6 +143,17 @@ class Simulation {
       }
     }
     for (const a of caught) a.alive = false;
+
+    // 終了判定: 時間切れ、または膠着(残存グループが1つ以下)
+    const counts = this.aliveCounts();
+    const survivingGroups = GROUPS.filter((g) => counts[g] > 0);
+    if (this.timeLeft <= 0 || survivingGroups.length <= 1) {
+      this.timeLeft = Math.max(this.timeLeft, 0);
+      this.finished = true;
+      const max = Math.max(counts.gu, counts.choki, counts.pa);
+      const winners = GROUPS.filter((g) => counts[g] === max);
+      this.winner = winners.length === 1 ? winners[0] : 'draw';
+    }
   }
 }
 

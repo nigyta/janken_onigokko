@@ -205,3 +205,50 @@ test('捕獲: 同一フレームの同時捕獲は両方有効', () => {
   assert.strictEqual(gu.alive, false);
   assert.strictEqual(pa.alive, true);
 });
+
+test('終了: 時間切れで最多残存グループの勝ち', () => {
+  const sim = makeEmptySim(1); // duration 1秒
+  sim.agents.push(
+    new Agent('gu', 0, 0, 0),
+    new Agent('gu', 0, 100, 0),
+    new Agent('choki', 790, 590, 0) // 遠くにいるので捕獲は起きない
+  );
+  for (let i = 0; i < 11; i++) sim.tick(0.1); // 1.1秒ぶん進める
+  assert.strictEqual(sim.finished, true);
+  assert.strictEqual(sim.timeLeft, 0); // 負にならず0で止まる
+  assert.strictEqual(sim.winner, 'gu'); // 2人 vs 1人
+});
+
+test('終了: 同数なら引き分け', () => {
+  const sim = makeEmptySim(1);
+  sim.agents.push(
+    new Agent('gu', 0, 0, 0),
+    new Agent('choki', 790, 590, 0)
+  );
+  for (let i = 0; i < 11; i++) sim.tick(0.1);
+  assert.strictEqual(sim.finished, true);
+  assert.strictEqual(sim.winner, 'draw');
+});
+
+test('終了: 残存グループが1つになったら時間内でも終了(膠着)', () => {
+  const sim = makeEmptySim(); // duration 60秒
+  const gu = new Agent('gu', 100, 100, 0);
+  const choki = new Agent('choki', 110, 100, 0);
+  sim.agents.push(gu, choki);
+  sim.tick(0.001); // gu が choki を捕獲 → gu のみ残存
+  assert.strictEqual(sim.finished, true);
+  assert.strictEqual(sim.winner, 'gu');
+  assert.ok(sim.timeLeft > 0); // 時間はまだ残っている
+});
+
+test('終了後: tick しても状態が変わらない', () => {
+  const sim = makeEmptySim();
+  const gu = new Agent('gu', 100, 100, 0);
+  const choki = new Agent('choki', 110, 100, 0);
+  sim.agents.push(gu, choki);
+  sim.tick(0.001); // ここで膠着終了
+  const timeLeftAfterFinish = sim.timeLeft;
+  sim.tick(0.1);
+  assert.strictEqual(sim.timeLeft, timeLeftAfterFinish);
+  assert.strictEqual(sim.winner, 'gu');
+});
