@@ -2,6 +2,7 @@
 
 // 正規分布乱数(Box-Muller法)。rand は注入可能(テスト用)
 function randNormal(mean, sd, rand = Math.random) {
+  if (sd === 0) return mean; // 明示的な特例: ばらつきなし
   let u1;
   do { u1 = rand(); } while (u1 === 0); // log(0) を避ける
   const u2 = rand();
