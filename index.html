@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>じゃんけん鬼ごっこ</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; height: 100vh; display: flex;
+    background: #1a1a2e; color: #eee;
+    font-family: "Hiragino Sans", "Noto Sans JP", sans-serif;
+  }
+  #sidebar {
+    width: 240px; flex-shrink: 0; background: #16213e;
+    padding: 16px; display: flex; flex-direction: column; gap: 14px;
+  }
+  h1 { font-size: 16px; margin: 0 0 4px; }
+  label { font-size: 12px; color: #aaa; display: block; }
+  input[type="range"] { width: 100%; }
+  button {
+    padding: 8px; border: none; border-radius: 6px;
+    font-size: 14px; font-weight: bold; cursor: pointer;
+  }
+  #startBtn { background: #e94560; color: #fff; }
+  #resetBtn { background: #444; color: #eee; }
+  #status { margin-top: auto; display: flex; flex-direction: column; gap: 6px; }
+  #timer { font-size: 18px; font-weight: bold; }
+  .count { font-size: 16px; font-weight: bold; }
+  .count.gu { color: #e74c3c; }
+  .count.choki { color: #2ecc71; }
+  .count.pa { color: #3498db; }
+  #board {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    position: relative; padding: 16px;
+  }
+  canvas {
+    background: #0f0f1a; border-radius: 8px;
+    max-width: 100%; max-height: 100%;
+  }
+  #overlay {
+    position: absolute; inset: 0;
+    display: none; align-items: center; justify-content: center;
+    background: rgba(0, 0, 0, 0.6);
+    font-size: 36px; font-weight: bold; text-align: center;
+  }
+</style>
+</head>
+<body>
+<div id="sidebar">
+  <h1>じゃんけん鬼ごっこ</h1>
+  <div>
+    <label>人数 N(グループごと): <span id="nValue">10</span> 人</label>
+    <input type="range" id="nSlider" min="1" max="100" value="10">
+  </div>
+  <div>
+    <label>シミュレーション時間: <span id="durValue">60</span> 秒</label>
+    <input type="range" id="durSlider" min="10" max="300" value="60">
+  </div>
+  <div>
+    <label>平均速度: <span id="speedValue">80</span> px/秒</label>
+    <input type="range" id="speedSlider" min="10" max="300" value="80">
+  </div>
+  <div>
+    <label>速度の標準偏差: <span id="sdValue">15</span> px/秒</label>
+    <input type="range" id="sdSlider" min="0" max="100" value="15">
+  </div>
+  <button id="startBtn">スタート</button>
+  <button id="resetBtn">リセット</button>
+  <div id="status">
+    <div id="timer">⏱ ─</div>
+    <div class="count gu">✊ グー <span id="countGu">-</span> 人</div>
+    <div class="count choki">✌️ チョキ <span id="countChoki">-</span> 人</div>
+    <div class="count pa">✋ パー <span id="countPa">-</span> 人</div>
+  </div>
+</div>
+<div id="board">
+  <canvas id="field" width="800" height="600"></canvas>
+  <div id="overlay"></div>
+</div>
+
+<script src="sim.js"></script>
+<script>
+'use strict';
+
+// ---- Renderer ----
+const EMOJI = { gu: '✊', choki: '✌️', pa: '✋' };
+const COLOR = { gu: '#e74c3c', choki: '#2ecc71', pa: '#3498db' };
+const NAME = { gu: 'グー', choki: 'チョキ', pa: 'パー' };
+
+const canvas = document.getElementById('field');
+const ctx = canvas.getContext('2d');
+
+function draw(sim) {
+  ctx.clearRect(0, 0, FIELD_WIDTH, FIELD_HEIGHT);
+  ctx.font = '24px serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.shadowBlur = 12;
+  for (const a of sim.agents) {
+    if (!a.alive) continue;
+    ctx.shadowColor = COLOR[a.group]; // グループ色の光彩
+    ctx.fillText(EMOJI[a.group], a.x, a.y);
+  }
+  ctx.shadowBlur = 0;
+}
+
+// ---- UIController ----
+const $ = (id) => document.getElementById(id);
+
+// スライダーの値表示を連動させる
+const sliderPairs = [
+  ['nSlider', 'nValue'],
+  ['durSlider', 'durValue'],
+  ['speedSlider', 'speedValue'],
+  ['sdSlider', 'sdValue'],
+];
+for (const [sliderId, valueId] of sliderPairs) {
+  $(sliderId).addEventListener('input', () => {
+    $(valueId).textContent = $(sliderId).value;
+  });
+}
+
+function readParams() {
+  return {
+    n: Number($('nSlider').value),
+    duration: Number($('durSlider').value),
+    meanSpeed: Number($('speedSlider').value),
+    speedSd: Number($('sdSlider').value),
+  };
+}
+
+let sim = null;
+let running = false;
+let lastTime = null;
+
+function updateStatus() {
+  const counts = sim.aliveCounts();
+  $('timer').textContent = `⏱ 残り ${sim.timeLeft.toFixed(1)} 秒`;
+  $('countGu').textContent = counts.gu;
+  $('countChoki').textContent = counts.choki;
+  $('countPa').textContent = counts.pa;
+}
+
+function showOverlay() {
+  const overlay = $('overlay');
+  if (sim.winner === 'draw') {
+    overlay.textContent = '引き分け';
+    overlay.style.color = '#eee';
+  } else {
+    const counts = sim.aliveCounts();
+    overlay.textContent =
+      `${EMOJI[sim.winner]} ${NAME[sim.winner]}の勝ち!(残り ${counts[sim.winner]} 人)`;
+    overlay.style.color = COLOR[sim.winner];
+  }
+  overlay.style.display = 'flex';
+}
+
+function loop(t) {
+  if (!running) return;
+  const dt = lastTime === null ? 0 : (t - lastTime) / 1000;
+  lastTime = t;
+  sim.tick(dt);
+  draw(sim);
+  updateStatus();
+  if (sim.finished) {
+    running = false;
+    showOverlay();
+    return;
+  }
+  requestAnimationFrame(loop);
+}
+
+function start() {
+  sim = new Simulation(readParams());
+  running = true;
+  lastTime = null;
+  $('overlay').style.display = 'none';
+  requestAnimationFrame(loop);
+}
+
+function reset() {
+  running = false;
+  $('overlay').style.display = 'none';
+  sim = new Simulation(readParams());
+  draw(sim);
+  updateStatus();
+}
+
+$('startBtn').addEventListener('click', start);
+$('resetBtn').addEventListener('click', reset);
+
+reset(); // 初期表示(配置のみ)
+</script>
+</body>
+</html>
