@@ -49,6 +49,29 @@ class Agent {
     }
     return nearest;
   }
+
+  // 移動方向の単位ベクトル {x, y} を返す。動く理由がなければ null
+  // 追跡: 1/d の重みで獲物へ、逃走: FLEE_WEIGHT/d の重みで脅威の反対へ。
+  // 距離の逆数の重み付けにより、近い相手ほど行動に強く影響する
+  direction(agents) {
+    const prey = this.nearestOf(agents, CATCHES[this.group]);
+    const threat = this.nearestOf(agents, CAUGHT_BY[this.group]);
+    let dx = 0;
+    let dy = 0;
+    if (prey) {
+      const d = Math.max(this.distanceTo(prey), 1e-6);
+      dx += ((prey.x - this.x) / d) * (1 / d);
+      dy += ((prey.y - this.y) / d) * (1 / d);
+    }
+    if (threat) {
+      const d = Math.max(this.distanceTo(threat), 1e-6);
+      dx += ((this.x - threat.x) / d) * (FLEE_WEIGHT / d);
+      dy += ((this.y - threat.y) / d) * (FLEE_WEIGHT / d);
+    }
+    const len = Math.hypot(dx, dy);
+    if (len < 1e-9) return null;
+    return { x: dx / len, y: dy / len };
+  }
 }
 
 // Node のテストから読めるようにする(ブラウザでは module が無いため無視される)

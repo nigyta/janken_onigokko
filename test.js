@@ -58,3 +58,33 @@ test('Agent: 対象グループが全滅なら nearestOf は null', () => {
   const me = new Agent('gu', 0, 0, 10);
   assert.strictEqual(me.nearestOf([me], 'choki'), null);
 });
+
+test('direction: 獲物のみ → 獲物に向かう単位ベクトル', () => {
+  const me = new Agent('gu', 100, 100, 10);
+  const prey = new Agent('choki', 200, 100, 10);
+  const dir = me.direction([me, prey]);
+  assert.ok(Math.abs(dir.x - 1) < 1e-9, `dir.x=${dir.x}`);
+  assert.ok(Math.abs(dir.y) < 1e-9, `dir.y=${dir.y}`);
+});
+
+test('direction: 脅威のみ → 反対方向に逃げる', () => {
+  const me = new Agent('gu', 100, 100, 10);
+  const threat = new Agent('pa', 200, 100, 10);
+  const dir = me.direction([me, threat]);
+  assert.ok(Math.abs(dir.x + 1) < 1e-9, `dir.x=${dir.x}`);
+  assert.ok(Math.abs(dir.y) < 1e-9, `dir.y=${dir.y}`);
+});
+
+test('direction: 獲物と脅威が同方向・同距離なら逃走が勝つ', () => {
+  const me = new Agent('gu', 100, 100, 10);
+  const prey = new Agent('choki', 200, 100, 10);
+  const threat = new Agent('pa', 200, 100, 10);
+  const dir = me.direction([me, prey, threat]);
+  // 逃走の重み 1.5 が追跡の 1.0 に勝ち、-x 方向に逃げる
+  assert.ok(dir.x < 0, `dir.x=${dir.x}`);
+});
+
+test('direction: 獲物も脅威もいなければ null(その場で停止)', () => {
+  const me = new Agent('gu', 100, 100, 10);
+  assert.strictEqual(me.direction([me]), null);
+});
