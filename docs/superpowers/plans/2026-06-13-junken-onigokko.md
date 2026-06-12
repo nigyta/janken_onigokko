@@ -839,6 +839,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
     display: none; align-items: center; justify-content: center;
     background: rgba(0, 0, 0, 0.6);
     font-size: 36px; font-weight: bold; text-align: center;
+    padding: 0 24px; overflow-wrap: anywhere; /* 狭い画面でも勝者テキストが収まるように */
   }
 </style>
 </head>
