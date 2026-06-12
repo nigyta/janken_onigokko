@@ -182,13 +182,15 @@ test('捕獲: 捕食関係がなければ捕まらない', () => {
   assert.strictEqual(b.alive, true);
 });
 
-test('捕獲: 捕獲半径より遠ければ捕まらない', () => {
+test('捕獲: 捕獲半径以上の距離なら捕まらない(境界含む)', () => {
   const sim = makeEmptySim();
   const hunter = new Agent('gu', 100, 100, 0);
-  const prey = new Agent('choki', 120, 100, 0); // 距離20 >= 16
-  sim.agents.push(hunter, prey);
+  const far = new Agent('choki', 120, 100, 0);        // 距離20 > 16
+  const atBoundary = new Agent('choki', 116, 100, 0); // 距離ちょうど16(< でなく <= なら捕まる)
+  sim.agents.push(hunter, far, atBoundary);
   sim.tick(0.001);
-  assert.strictEqual(prey.alive, true);
+  assert.strictEqual(far.alive, true);
+  assert.strictEqual(atBoundary.alive, true);
 });
 
 test('捕獲: 同一フレームの同時捕獲は両方有効', () => {
