@@ -26,3 +26,35 @@ test('randNormal: 標準偏差0なら常に平均値', () => {
     assert.strictEqual(randNormal(80, 0), 80);
   }
 });
+
+test('三すくみ: グー→チョキ→パー→グー', () => {
+  assert.deepStrictEqual(GROUPS, ['gu', 'choki', 'pa']);
+  assert.strictEqual(CATCHES.gu, 'choki');
+  assert.strictEqual(CATCHES.choki, 'pa');
+  assert.strictEqual(CATCHES.pa, 'gu');
+  assert.strictEqual(CAUGHT_BY.choki, 'gu');
+  assert.strictEqual(CAUGHT_BY.pa, 'choki');
+  assert.strictEqual(CAUGHT_BY.gu, 'pa');
+});
+
+test('Agent: distanceTo はユークリッド距離', () => {
+  const a = new Agent('gu', 0, 0, 10);
+  const b = new Agent('choki', 3, 4, 10);
+  assert.strictEqual(a.distanceTo(b), 5);
+});
+
+test('Agent: 最近接の生存している指定グループを選ぶ', () => {
+  const me = new Agent('gu', 0, 0, 10);
+  const dead = new Agent('choki', 50, 0, 10);
+  dead.alive = false;
+  const near = new Agent('choki', 100, 0, 10);
+  const far = new Agent('choki', 200, 0, 10);
+  const otherGroup = new Agent('pa', 10, 0, 10);
+  const agents = [me, dead, near, far, otherGroup];
+  assert.strictEqual(me.nearestOf(agents, CATCHES[me.group]), near);
+});
+
+test('Agent: 対象グループが全滅なら nearestOf は null', () => {
+  const me = new Agent('gu', 0, 0, 10);
+  assert.strictEqual(me.nearestOf([me], 'choki'), null);
+});
