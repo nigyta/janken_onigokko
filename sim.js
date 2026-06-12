@@ -147,8 +147,8 @@ class Simulation {
     // 終了判定: 時間切れ、または膠着(残存グループが1つ以下)
     const counts = this.aliveCounts();
     const survivingGroups = GROUPS.filter((g) => counts[g] > 0);
+    if (this.timeLeft <= 1e-9) this.timeLeft = 0; // 浮動小数点の減算残差を吸収
     if (this.timeLeft <= 0 || survivingGroups.length <= 1) {
-      this.timeLeft = Math.max(this.timeLeft, 0);
       this.finished = true;
       const max = Math.max(counts.gu, counts.choki, counts.pa);
       const winners = GROUPS.filter((g) => counts[g] === max);

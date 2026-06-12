@@ -213,7 +213,7 @@ test('終了: 時間切れで最多残存グループの勝ち', () => {
     new Agent('gu', 0, 100, 0),
     new Agent('choki', 790, 590, 0) // 遠くにいるので捕獲は起きない
   );
-  for (let i = 0; i < 11; i++) sim.tick(0.1); // 1.1秒ぶん進める
+  for (let i = 0; i < 10; i++) sim.tick(0.1); // 1.0秒ちょうど(減算残差は1e-9で吸収)
   assert.strictEqual(sim.finished, true);
   assert.strictEqual(sim.timeLeft, 0); // 負にならず0で止まる
   assert.strictEqual(sim.winner, 'gu'); // 2人 vs 1人
@@ -225,7 +225,7 @@ test('終了: 同数なら引き分け', () => {
     new Agent('gu', 0, 0, 0),
     new Agent('choki', 790, 590, 0)
   );
-  for (let i = 0; i < 11; i++) sim.tick(0.1);
+  for (let i = 0; i < 10; i++) sim.tick(0.1); // 1.0秒ちょうど(減算残差は1e-9で吸収)
   assert.strictEqual(sim.finished, true);
   assert.strictEqual(sim.winner, 'draw');
 });
@@ -251,4 +251,18 @@ test('終了後: tick しても状態が変わらない', () => {
   sim.tick(0.1);
   assert.strictEqual(sim.timeLeft, timeLeftAfterFinish);
   assert.strictEqual(sim.winner, 'gu');
+});
+
+test('終了: 全グループ同時全滅なら引き分け', () => {
+  const sim = makeEmptySim();
+  // 三つ巴: 3人とも互いに捕獲半径内 → 同一フレームで全員捕獲される
+  sim.agents.push(
+    new Agent('gu', 100, 100, 0),
+    new Agent('choki', 110, 100, 0),
+    new Agent('pa', 105, 110, 0)
+  );
+  sim.tick(0.001);
+  assert.deepStrictEqual(sim.aliveCounts(), { gu: 0, choki: 0, pa: 0 });
+  assert.strictEqual(sim.finished, true);
+  assert.strictEqual(sim.winner, 'draw');
 });
