@@ -202,6 +202,26 @@ class Simulation {
     );
   }
 
+  // 詰まったエージェントをランダムな方向へ動かす。
+  // 持続する wanderAngle 方向をまず試し、ブロックされたら引き直す(最大 WANDER_TRIES 回)。
+  // 動ける向きが見つかれば移動、見つからなければその場に留まる
+  wanderMove(agent, dt) {
+    for (let attempt = 0; attempt < WANDER_TRIES; attempt++) {
+      if (agent.wanderAngle === null) {
+        agent.wanderAngle = this.rand() * 2 * Math.PI;
+      }
+      const nx = Math.min(Math.max(agent.x + Math.cos(agent.wanderAngle) * agent.speed * dt, 0), FIELD_WIDTH);
+      const ny = Math.min(Math.max(agent.y + Math.sin(agent.wanderAngle) * agent.speed * dt, 0), FIELD_HEIGHT);
+      if ((nx !== agent.x || ny !== agent.y) && !this.blockedMove(agent, nx, ny)) {
+        agent.x = nx;
+        agent.y = ny;
+        return;
+      }
+      // この向きでは動けない → 引き直して次の試行へ
+      agent.wanderAngle = this.rand() * 2 * Math.PI;
+    }
+  }
+
   // グループごとの生存者数 { gu, choki, pa }
   aliveCounts() {
     const counts = { gu: 0, choki: 0, pa: 0 };
@@ -222,18 +242,26 @@ class Simulation {
     // 移動(壁の内側にクランプ、障害物には進入不可)
     for (const agent of this.agents) {
       if (!agent.alive) continue;
+      const ox = agent.x;
+      const oy = agent.y;
       const dir = agent.direction(this.agents, this.obstacles);
-      if (!dir) continue;
-      const nx = Math.min(Math.max(agent.x + dir.x * agent.speed * dt, 0), FIELD_WIDTH);
-      const ny = Math.min(Math.max(agent.y + dir.y * agent.speed * dt, 0), FIELD_HEIGHT);
-      // 軸分離スライド: そのまま → x のみ → y のみ の順に試し、全部ダメなら停止
-      if (!this.blockedMove(agent, nx, ny)) {
-        agent.x = nx;
-        agent.y = ny;
-      } else if (!this.blockedMove(agent, nx, agent.y)) {
-        agent.x = nx;
-      } else if (!this.blockedMove(agent, agent.x, ny)) {
-        agent.y = ny;
+      if (dir) {
+        const nx = Math.min(Math.max(agent.x + dir.x * agent.speed * dt, 0), FIELD_WIDTH);
+        const ny = Math.min(Math.max(agent.y + dir.y * agent.speed * dt, 0), FIELD_HEIGHT);
+        // 軸分離スライド: そのまま → x のみ → y のみ の順に試し、全部ダメなら停止
+        if (!this.blockedMove(agent, nx, ny)) {
+          agent.x = nx;
+          agent.y = ny;
+        } else if (!this.blockedMove(agent, nx, agent.y)) {
+          agent.x = nx;
+        } else if (!this.blockedMove(agent, agent.x, ny)) {
+          agent.y = ny;
+        }
+      }
+      // このフレームで1ピクセルも動けなかった(角に挟まれた / 盤面端 / 相手が見えない)
+      // 場合はランダムな方向に動いて膠着を脱出する
+      if (agent.x === ox && agent.y === oy) {
+        this.wanderMove(agent, dt);
       }
     }
 

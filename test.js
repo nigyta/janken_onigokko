@@ -396,3 +396,54 @@ test('Agent: 新規エージェントの wanderAngle は null', () => {
 test('WANDER_TRIES が正の整数として公開されている', () => {
   assert.ok(Number.isInteger(WANDER_TRIES) && WANDER_TRIES > 0, `WANDER_TRIES=${WANDER_TRIES}`);
 });
+
+// rand を注入できる Simulation を作るヘルパー(n:0 の空シミュレーション)
+function makeSimWithRand(rand) {
+  return new Simulation({ n: 0, duration: 60, meanSpeed: 80, speedSd: 0 }, rand);
+}
+
+test('wanderMove: 相手が見えないエージェントもランダムに動く', () => {
+  // rand は常に 0 を返す → wanderAngle = 0(=+x 方向)
+  const sim = makeSimWithRand(() => 0);
+  const a = new Agent('gu', 100, 100, 50); // 相手なし(単独)→ 方向なし
+  sim.agents.push(a);
+  sim.tick(0.1); // +x へ 50×0.1 = 5px 進むはず
+  assert.ok(Math.abs(a.x - 105) < 1e-9, `x=${a.x}`);
+  assert.ok(Math.abs(a.y - 100) < 1e-9, `y=${a.y}`);
+});
+
+test('wanderMove: 速度0のエージェントは動かない(回帰防止)', () => {
+  const sim = makeSimWithRand(() => 0);
+  const a = new Agent('gu', 100, 100, 0); // 速度0
+  sim.agents.push(a);
+  sim.tick(0.1);
+  assert.strictEqual(a.x, 100);
+  assert.strictEqual(a.y, 100);
+});
+
+test('wanderMove: 角で詰まったエージェントが別方向に脱出する', () => {
+  // rand 常に 0.5 → 引き直すと角度 0.5×2π=π(-x 方向)
+  const sim = makeSimWithRand(() => 0.5);
+  // エージェントの右(+x)に壁。左は開いている
+  sim.obstacles = [{ x: 110, y: 50, w: 100, h: 100 }];
+  const a = new Agent('gu', 105, 100, 50);
+  a.wanderAngle = 0; // 既に +x 向き(壁にぶつかる)
+  sim.agents.push(a);
+  sim.tick(0.1);
+  // 試行0: +x(角度0)は壁(x≥110)に阻まれ引き直し → 試行1: 角度π(-x)で 5px 脱出
+  assert.ok(a.x < 105, `x=${a.x}`); // 左に動いた
+  assert.ok(Math.abs(a.y - 100) < 1e-9, `y=${a.y}`);
+});
+
+test('wanderMove: 盤面の角に押し付けられたエージェントも動く', () => {
+  // rand 常に 0.5 → 角度 π(-x 方向)。盤面右下の角に居て -x なら盤面内に動ける
+  const sim = makeSimWithRand(() => 0.5);
+  const prey = new Agent('choki', 1000, 700, 0); // 盤面の外(右下方向)に獲物 → 角へ引かれる
+  const a = new Agent('gu', FIELD_WIDTH, FIELD_HEIGHT, 50); // 盤面右下の角(800,600)
+  sim.agents.push(a, prey);
+  // a は外の獲物へ向かおうとするが盤面端クランプで動けない → wanderMove 発動
+  sim.tick(0.1);
+  // -x 方向に 5px 動く(y は端でクランプ継続)
+  assert.ok(a.x < FIELD_WIDTH, `x=${a.x}`);
+  assert.ok(Math.abs(a.y - FIELD_HEIGHT) < 1e-9, `y=${a.y}`);
+});
