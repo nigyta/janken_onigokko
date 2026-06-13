@@ -17,7 +17,7 @@
 ```
 junken_onigokko/
 ├── sim.js   … 定数 WANDER_TRIES、Agent.wanderAngle、Simulation.wanderMove、tick移動ループ改修
-└── test.js  … テスト4件追加(36 → 40件)
+└── test.js  … テスト6件追加(36 → 42件。Task 1 で2件、Task 2 で4件)
 ```
 
 すべてのコマンドはリポジトリルート(`/Users/tanizawa/ws_test/junken_onigokko`)で実行する。
