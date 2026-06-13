@@ -82,17 +82,18 @@ class Agent {
     return Math.hypot(other.x - this.x, other.y - this.y);
   }
 
-  // agents の中から、指定グループの最近接の生存者を返す(いなければ null)
-  nearestOf(agents, group) {
+  // agents の中から、指定グループの「見える」最近接の生存者を返す(いなければ null)
+  // 枝刈り: 現在の最良候補より近い相手のみ視線判定を行う
+  nearestOf(agents, group, obstacles = []) {
     let nearest = null;
     let minDist = Infinity;
     for (const a of agents) {
       if (a === this || !a.alive || a.group !== group) continue;
       const d = this.distanceTo(a);
-      if (d < minDist) {
-        minDist = d;
-        nearest = a;
-      }
+      if (d >= minDist) continue;
+      if (!canSee(this, a, obstacles)) continue;
+      minDist = d;
+      nearest = a;
     }
     return nearest;
   }
@@ -100,9 +101,9 @@ class Agent {
   // 移動方向の単位ベクトル {x, y} を返す。動く理由がなければ null
   // 追跡: 1/d の重みで獲物へ、逃走: FLEE_WEIGHT/d の重みで脅威の反対へ。
   // 距離の逆数の重み付けにより、近い相手ほど行動に強く影響する
-  direction(agents) {
-    const prey = this.nearestOf(agents, CATCHES[this.group]);
-    const threat = this.nearestOf(agents, CAUGHT_BY[this.group]);
+  direction(agents, obstacles = []) {
+    const prey = this.nearestOf(agents, CATCHES[this.group], obstacles);
+    const threat = this.nearestOf(agents, CAUGHT_BY[this.group], obstacles);
     let dx = 0;
     let dy = 0;
     if (prey) {
@@ -208,7 +209,7 @@ class Simulation {
     // 移動(壁の内側にクランプ)
     for (const agent of this.agents) {
       if (!agent.alive) continue;
-      const dir = agent.direction(this.agents);
+      const dir = agent.direction(this.agents, this.obstacles);
       if (!dir) continue;
       agent.x = Math.min(Math.max(agent.x + dir.x * agent.speed * dt, 0), FIELD_WIDTH);
       agent.y = Math.min(Math.max(agent.y + dir.y * agent.speed * dt, 0), FIELD_HEIGHT);
@@ -222,7 +223,9 @@ class Simulation {
     for (const hunter of alive) {
       for (const prey of alive) {
         if (CATCHES[hunter.group] !== prey.group) continue;
-        if (hunter.distanceTo(prey) < CAPTURE_RADIUS) caught.add(prey);
+        if (hunter.distanceTo(prey) >= CAPTURE_RADIUS) continue;
+        if (!canSee(hunter, prey, this.obstacles)) continue;
+        caught.add(prey);
       }
     }
     for (const a of caught) a.alive = false;

@@ -320,3 +320,31 @@ test('障害物: エージェントは障害物の外に配置される', () => 
     assert.ok(!sim.obstacles.some((r) => pointInRect(a.x, a.y, r)), `(${a.x}, ${a.y})`);
   }
 });
+
+test('nearestOf: 壁の向こうの相手は見えず、見える次点を選ぶ', () => {
+  const me = new Agent('gu', 0, 125, 10);
+  const hidden = new Agent('choki', 200, 125, 10);  // 壁の向こう(近い)
+  const visible = new Agent('choki', 0, 400, 10);   // 壁なし(遠い)
+  const wall = { x: 100, y: 100, w: 50, h: 50 };
+  assert.strictEqual(me.nearestOf([me, hidden, visible], 'choki', [wall]), visible);
+  // 全員壁の向こうなら null
+  assert.strictEqual(me.nearestOf([me, hidden], 'choki', [wall]), null);
+});
+
+test('direction: 見える相手がいなければ null(停止)', () => {
+  const me = new Agent('gu', 0, 125, 10);
+  const prey = new Agent('choki', 200, 125, 10);
+  const threat = new Agent('pa', 220, 125, 10);
+  const wall = { x: 100, y: 100, w: 50, h: 50 };
+  assert.strictEqual(me.direction([me, prey, threat], [wall]), null);
+});
+
+test('捕獲: 捕獲半径内でも壁が間にあれば不成立', () => {
+  const sim = makeEmptySim();
+  sim.obstacles = [{ x: 104, y: 50, w: 2, h: 100 }]; // 2人の間の薄い壁
+  const hunter = new Agent('gu', 100, 100, 0);
+  const prey = new Agent('choki', 110, 100, 0); // 距離10 < 16 だが壁越し
+  sim.agents.push(hunter, prey);
+  sim.tick(0.001);
+  assert.strictEqual(prey.alive, true);
+});
