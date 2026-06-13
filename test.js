@@ -290,4 +290,8 @@ test('segmentIntersectsRect: 交差・非交差の判定', () => {
   assert.strictEqual(segmentIntersectsRect(0, 0, 50, 50, rect), false);
   // 角から対角へ内部を通る
   assert.strictEqual(segmentIntersectsRect(100, 100, 150, 150, rect), true);
+  // 外から来て角にちょうど触れて終わる
+  assert.strictEqual(segmentIntersectsRect(50, 50, 100, 100, rect), true);
+  // 角の直前で止まる(触れない)
+  assert.strictEqual(segmentIntersectsRect(0, 0, 99, 99, rect), false);
 });
