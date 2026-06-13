@@ -30,12 +30,15 @@
   .count.choki { color: #2ecc71; }
   .count.pa { color: #3498db; }
   #board {
-    flex: 1; display: flex; align-items: center; justify-content: center;
-    position: relative; padding: 16px;
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 12px;
+    padding: 16px;
   }
+  #fieldWrap { position: relative; }
   canvas {
+    display: block;
     background: #0f0f1a; border-radius: 8px;
-    max-width: 100%; max-height: 100%;
+    max-width: 100%;
   }
   #overlay {
     position: absolute; inset: 0;
@@ -79,8 +82,11 @@
   </div>
 </div>
 <div id="board">
-  <canvas id="field" width="800" height="600"></canvas>
-  <div id="overlay"></div>
+  <div id="fieldWrap">
+    <canvas id="field" width="800" height="600"></canvas>
+    <div id="overlay"></div>
+  </div>
+  <canvas id="graph" width="800" height="160"></canvas>
 </div>
 
 <script src="sim.js"></script>
@@ -94,6 +100,11 @@ const NAME = { gu: 'グー', choki: 'チョキ', pa: 'パー' };
 
 const canvas = document.getElementById('field');
 const ctx = canvas.getContext('2d');
+const graphCanvas = document.getElementById('graph');
+const gctx = graphCanvas.getContext('2d');
+const GRAPH_W = graphCanvas.width;   // 800
+const GRAPH_H = graphCanvas.height;  // 160
+const GRAPH_PAD = 28;                // 軸ラベル用の余白 px
 
 function draw(sim) {
   ctx.clearRect(0, 0, FIELD_WIDTH, FIELD_HEIGHT);
@@ -117,6 +128,58 @@ function draw(sim) {
   }
   ctx.shadowBlur = 0;
   ctx.shadowColor = 'transparent';
+}
+
+function drawGraph(sim) {
+  gctx.clearRect(0, 0, GRAPH_W, GRAPH_H);
+
+  const n = sim.params.n;
+  const duration = sim.params.duration;
+  const left = GRAPH_PAD;
+  const top = GRAPH_PAD;
+  const plotW = GRAPH_W - GRAPH_PAD * 2;
+  const plotH = GRAPH_H - GRAPH_PAD * 2;
+  const right = left + plotW;
+  const bottom = top + plotH;
+
+  // 軸(左=y軸、下=x軸)
+  gctx.strokeStyle = '#2c2c54';
+  gctx.lineWidth = 1;
+  gctx.beginPath();
+  gctx.moveTo(left, top);
+  gctx.lineTo(left, bottom);
+  gctx.lineTo(right, bottom);
+  gctx.stroke();
+
+  // 目盛りラベル
+  gctx.fillStyle = '#888';
+  gctx.font = '11px sans-serif';
+  gctx.textAlign = 'right';
+  gctx.textBaseline = 'middle';
+  gctx.fillText(String(n), left - 6, top);    // y上端 = 初期人数 n
+  gctx.fillText('0', left - 6, bottom);        // y下端 = 0
+  gctx.textAlign = 'center';
+  gctx.textBaseline = 'top';
+  gctx.fillText('0s', left, bottom + 4);              // x左端
+  gctx.fillText(duration + 's', right, bottom + 4);   // x右端
+
+  if (n <= 0 || duration <= 0) return; // 0除算防止(折れ線は描かない)
+
+  // グー・チョキ・パーの3本の折れ線
+  for (const group of GROUPS) {
+    gctx.strokeStyle = COLOR[group];
+    gctx.lineWidth = 2;
+    gctx.beginPath();
+    sim.history.forEach((s, i) => {
+      const tx = Math.min(s.t / duration, 1);             // 終了点が duration を僅かに超えても右端でクランプ
+      const ry = Math.max(0, Math.min(1, s[group] / n));  // 念のため [0,1] にクランプ
+      const x = left + tx * plotW;
+      const y = top + (1 - ry) * plotH;                   // 上が多い
+      if (i === 0) gctx.moveTo(x, y);
+      else gctx.lineTo(x, y);
+    });
+    gctx.stroke();
+  }
 }
 
 // ---- UIController ----
@@ -183,6 +246,7 @@ function loop(t) {
   lastTime = t;
   sim.tick(dt);
   draw(sim);
+  drawGraph(sim);
   updateStatus();
   if (sim.finished) {
     running = false;
@@ -207,6 +271,7 @@ function reset() {
   $('overlay').style.display = 'none';
   sim = new Simulation(readParams());
   draw(sim);
+  drawGraph(sim);
   updateCounts();
   $('timer').textContent = '⏱ ─'; // 開始前はタイマーを表示しない
 }
