@@ -251,6 +251,7 @@ class Simulation {
     if (this.finished) return;
     dt = Math.min(dt, MAX_DT);
     this.timeLeft -= dt;
+    this.elapsed += dt;
 
     // 移動(壁の内側にクランプ、障害物には進入不可)
     for (const agent of this.agents) {
@@ -302,6 +303,16 @@ class Simulation {
       const max = Math.max(counts.gu, counts.choki, counts.pa);
       const winners = GROUPS.filter((g) => counts[g] === max);
       this.winner = winners.length === 1 ? winners[0] : 'draw';
+    }
+    // 人数推移を記録する(移動・捕獲・終了判定の後 = この tick の結果を反映)
+    if (this.finished) {
+      this.pushSample(); // 終了点は間隔に関係なく必ず記録(末端が欠けない)
+    } else {
+      // SAMPLE_INTERVAL ごとに記録。while で、万一1tickが複数間隔をまたいでも漏らさない
+      while (this.elapsed >= this.nextSampleAt) {
+        this.pushSample();
+        this.nextSampleAt += SAMPLE_INTERVAL;
+      }
     }
   }
 }

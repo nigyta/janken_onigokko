@@ -457,3 +457,43 @@ test('Simulation: 初期 history は開始時点1点(t=0、全グループ n 人
   assert.strictEqual(sim.history.length, 1);
   assert.deepStrictEqual(sim.history[0], { t: 0, gu: 5, choki: 5, pa: 5 });
 });
+
+test('tick: SAMPLE_INTERVAL ごとに history が1点ずつ増える', () => {
+  // n:0 で空シミュレーションを作り、捕まえ合わない2体を離して置く(速度0で動かない)
+  const sim = new Simulation({ n: 0, duration: 60, meanSpeed: 0, speedSd: 0, obstacleCount: 0 }, () => 0.5);
+  sim.agents.push(new Agent('gu', 100, 100, 0));
+  sim.agents.push(new Agent('choki', 700, 500, 0));
+  assert.strictEqual(sim.history.length, 1); // 開始点のみ
+  for (let i = 0; i < 4; i++) sim.tick(0.1); // 経過 ~0.4s < 0.5 → 増えない
+  assert.strictEqual(sim.history.length, 1, `0.4s後: len=${sim.history.length}`);
+  for (let i = 0; i < 2; i++) sim.tick(0.1); // 経過 ~0.6s → 0.5 を1回だけ跨ぐ
+  assert.strictEqual(sim.history.length, 2, `0.6s後: len=${sim.history.length}`);
+  const s = sim.history[1];
+  assert.ok(s.t >= 0.49 && s.t <= 0.65, `t=${s.t}`);
+  assert.strictEqual(s.gu + s.choki + s.pa, 2); // gu1 + choki1(捕獲なし)
+});
+
+test('tick: 終了時に最終点が記録される(間隔の途中でも)', () => {
+  const sim = new Simulation({ n: 1, duration: 0.05, meanSpeed: 0, speedSd: 0, obstacleCount: 0 }, () => 0.5);
+  assert.strictEqual(sim.history.length, 1); // 開始点のみ
+  sim.tick(0.1); // duration 0.05 を超過 → このtickで終了
+  assert.strictEqual(sim.finished, true);
+  assert.strictEqual(sim.history.length, 2, `len=${sim.history.length}`); // 開始 + 終了
+  const last = sim.history[1];
+  assert.ok(last.t > 0 && last.t < SAMPLE_INTERVAL, `t=${last.t}`); // 0.1s < 0.5s でも記録される
+});
+
+test('history: 合計は単調非増加で、開始時は 3n', () => {
+  const sim = new Simulation({ n: 8, duration: 5, meanSpeed: 120, speedSd: 0, obstacleCount: 0 });
+  let guard = 0;
+  while (!sim.finished && guard++ < 100000) sim.tick(0.1); // 終了まで回す
+  assert.ok(sim.history.length >= 2, `len=${sim.history.length}`);
+  const first = sim.history[0];
+  assert.strictEqual(first.gu + first.choki + first.pa, 24); // 3 × 8
+  let prev = Infinity;
+  for (const s of sim.history) {
+    const total = s.gu + s.choki + s.pa;
+    assert.ok(total <= prev, `total ${total} > prev ${prev} (t=${s.t})`); // 人は減る一方
+    prev = total;
+  }
+});
