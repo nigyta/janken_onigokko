@@ -4,7 +4,7 @@ const assert = require('node:assert');
 const {
   randNormal, Agent, Simulation,
   GROUPS, CATCHES, CAUGHT_BY,
-  FIELD_WIDTH, FIELD_HEIGHT, CAPTURE_RADIUS, MIN_SPEED, MAX_DT, FLEE_WEIGHT,
+  FIELD_WIDTH, FIELD_HEIGHT, CAPTURE_RADIUS, MIN_SPEED, MAX_SPEED, MAX_DT, FLEE_WEIGHT,
   pointInRect, segmentIntersectsRect, canSee,
   OBSTACLE_MIN_SIZE, OBSTACLE_MAX_SIZE,
 } = require('./sim.js');
@@ -376,4 +376,14 @@ test('移動: 障害物に進入せず、壁に沿ってスライドする', () 
   // (92, 94) は壁の中 → x成分(92,100)も壁の中 → y成分(100,94)だけ通る(スライド)
   assert.strictEqual(runner.x, 100);
   assert.ok(Math.abs(runner.y - 94) < 1e-9, `y=${runner.y}`);
+});
+
+test('速度は MAX_SPEED でクランプされる(トンネリング防止)', () => {
+  // 平均・偏差を極端に大きくして 350 超の速度を出そうとする
+  const sim = new Simulation({ n: 100, duration: 60, meanSpeed: 300, speedSd: 100 });
+  for (const a of sim.agents) {
+    assert.ok(a.speed <= MAX_SPEED, `speed=${a.speed}`);
+  }
+  // 1フレームの最大移動量が障害物最小サイズ未満であること
+  assert.ok(MAX_SPEED * MAX_DT < OBSTACLE_MIN_SIZE, `step=${MAX_SPEED * MAX_DT}`);
 });

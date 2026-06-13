@@ -9,6 +9,7 @@ const FIELD_WIDTH = 800;   // 盤面の論理幅 px
 const FIELD_HEIGHT = 600;  // 盤面の論理高さ px
 const CAPTURE_RADIUS = 16; // 捕獲半径 px
 const MIN_SPEED = 5;       // 最低速度 px/秒
+const MAX_SPEED = 350;     // 最高速度 px/秒(MAX_DT との積 35px < 障害物最小サイズ40px でトンネリング防止)
 const MAX_DT = 0.1;        // 1フレームの最大経過時間(秒)
 const FLEE_WEIGHT = 1.5;   // 逃走の重み係数(追跡は1.0)
 const OBSTACLE_MIN_SIZE = 40;  // 障害物の辺の最小 px
@@ -159,9 +160,9 @@ class Simulation {
       const area = areas[group];
       for (let i = 0; i < params.n; i++) {
         const { x, y } = this.findSpawnPoint(area);
-        const speed = Math.max(
-          randNormal(params.meanSpeed, params.speedSd, this.rand),
-          MIN_SPEED
+        const speed = Math.min(
+          Math.max(randNormal(params.meanSpeed, params.speedSd, this.rand), MIN_SPEED),
+          MAX_SPEED
         );
         this.agents.push(new Agent(group, x, y, speed));
       }
@@ -267,7 +268,7 @@ if (typeof module !== 'undefined') {
   module.exports = {
     randNormal, Agent, Simulation,
     GROUPS, CATCHES, CAUGHT_BY,
-    FIELD_WIDTH, FIELD_HEIGHT, CAPTURE_RADIUS, MIN_SPEED, MAX_DT, FLEE_WEIGHT,
+    FIELD_WIDTH, FIELD_HEIGHT, CAPTURE_RADIUS, MIN_SPEED, MAX_SPEED, MAX_DT, FLEE_WEIGHT,
     pointInRect, segmentIntersectsRect, canSee,
     OBSTACLE_MIN_SIZE, OBSTACLE_MAX_SIZE,
   };
