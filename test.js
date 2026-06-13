@@ -295,3 +295,26 @@ test('segmentIntersectsRect: 交差・非交差の判定', () => {
   // 角の直前で止まる(触れない)
   assert.strictEqual(segmentIntersectsRect(0, 0, 99, 99, rect), false);
 });
+
+test('障害物: 指定個数が盤面内・サイズ範囲内で生成される', () => {
+  const sim = new Simulation({ n: 0, duration: 60, meanSpeed: 80, speedSd: 0, obstacleCount: 8 });
+  assert.strictEqual(sim.obstacles.length, 8);
+  for (const r of sim.obstacles) {
+    assert.ok(r.w >= OBSTACLE_MIN_SIZE && r.w <= OBSTACLE_MAX_SIZE, `w=${r.w}`);
+    assert.ok(r.h >= OBSTACLE_MIN_SIZE && r.h <= OBSTACLE_MAX_SIZE, `h=${r.h}`);
+    assert.ok(r.x >= 0 && r.x + r.w <= FIELD_WIDTH, `x=${r.x} w=${r.w}`);
+    assert.ok(r.y >= 0 && r.y + r.h <= FIELD_HEIGHT, `y=${r.y} h=${r.h}`);
+  }
+});
+
+test('障害物: obstacleCount未指定なら0個(従来挙動)', () => {
+  const sim = new Simulation({ n: 5, duration: 60, meanSpeed: 80, speedSd: 0 });
+  assert.deepStrictEqual(sim.obstacles, []);
+});
+
+test('障害物: エージェントは障害物の外に配置される', () => {
+  const sim = new Simulation({ n: 30, duration: 60, meanSpeed: 80, speedSd: 15, obstacleCount: 10 });
+  for (const a of sim.agents) {
+    assert.ok(!sim.obstacles.some((r) => pointInRect(a.x, a.y, r)), `(${a.x}, ${a.y})`);
+  }
+});

@@ -122,7 +122,7 @@ class Agent {
 }
 
 class Simulation {
-  // params: { n, duration, meanSpeed, speedSd } / rand はテスト用に注入可能
+  // params: { n, duration, meanSpeed, speedSd, obstacleCount } / rand はテスト用に注入可能
   constructor(params, rand = Math.random) {
     this.params = params;
     this.rand = rand;
@@ -130,6 +130,20 @@ class Simulation {
     this.finished = false;
     this.winner = null; // グループ識別子 | 'draw' | null(進行中)
     this.agents = [];
+
+    // 障害物を先に生成(エージェント配置が障害物を避けるため)。重なりは許容
+    this.obstacles = [];
+    const obstacleCount = params.obstacleCount || 0;
+    for (let i = 0; i < obstacleCount; i++) {
+      const w = OBSTACLE_MIN_SIZE + this.rand() * (OBSTACLE_MAX_SIZE - OBSTACLE_MIN_SIZE);
+      const h = OBSTACLE_MIN_SIZE + this.rand() * (OBSTACLE_MAX_SIZE - OBSTACLE_MIN_SIZE);
+      this.obstacles.push({
+        x: this.rand() * (FIELD_WIDTH - w),
+        y: this.rand() * (FIELD_HEIGHT - h),
+        w,
+        h,
+      });
+    }
 
     // 3グループを離れた3エリアに配置(開始直後の即捕獲を防ぐ)
     // 左上=グー、右上=チョキ、下中央=パー(各エリアは盤面の1/4サイズ)
@@ -141,8 +155,7 @@ class Simulation {
     for (const group of GROUPS) {
       const area = areas[group];
       for (let i = 0; i < params.n; i++) {
-        const x = area.x + this.rand() * area.w;
-        const y = area.y + this.rand() * area.h;
+        const { x, y } = this.findSpawnPoint(area);
         const speed = Math.max(
           randNormal(params.meanSpeed, params.speedSd, this.rand),
           MIN_SPEED
@@ -150,6 +163,29 @@ class Simulation {
         this.agents.push(new Agent(group, x, y, speed));
       }
     }
+  }
+
+  // 障害物の外のスポーン位置を探す。
+  // 担当エリアで100回 → 盤面全体で100回 → 最後の候補(進入のみ禁止ルールで脱出可能)
+  findSpawnPoint(area) {
+    let x = 0;
+    let y = 0;
+    for (let i = 0; i < 100; i++) {
+      x = area.x + this.rand() * area.w;
+      y = area.y + this.rand() * area.h;
+      if (!this.insideAnyObstacle(x, y)) return { x, y };
+    }
+    for (let i = 0; i < 100; i++) {
+      x = this.rand() * FIELD_WIDTH;
+      y = this.rand() * FIELD_HEIGHT;
+      if (!this.insideAnyObstacle(x, y)) return { x, y };
+    }
+    return { x, y };
+  }
+
+  // 点がいずれかの障害物の中にあるか
+  insideAnyObstacle(x, y) {
+    return this.obstacles.some((rect) => pointInRect(x, y, rect));
   }
 
   // グループごとの生存者数 { gu, choki, pa }
