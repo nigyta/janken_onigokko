@@ -5,6 +5,8 @@ const {
   randNormal, Agent, Simulation,
   GROUPS, CATCHES, CAUGHT_BY,
   FIELD_WIDTH, FIELD_HEIGHT, CAPTURE_RADIUS, MIN_SPEED, MAX_DT, FLEE_WEIGHT,
+  pointInRect, segmentIntersectsRect, canSee,
+  OBSTACLE_MIN_SIZE, OBSTACLE_MAX_SIZE,
 } = require('./sim.js');
 
 test('randNormal: 平均と標準偏差が指定値に収束する', () => {
@@ -265,4 +267,27 @@ test('終了: 全グループ同時全滅なら引き分け', () => {
   assert.deepStrictEqual(sim.aliveCounts(), { gu: 0, choki: 0, pa: 0 });
   assert.strictEqual(sim.finished, true);
   assert.strictEqual(sim.winner, 'draw');
+});
+
+test('pointInRect: 境界含む内外判定', () => {
+  const rect = { x: 100, y: 100, w: 50, h: 50 };
+  assert.strictEqual(pointInRect(125, 125, rect), true);
+  assert.strictEqual(pointInRect(100, 100, rect), true);  // 境界(左上)
+  assert.strictEqual(pointInRect(150, 150, rect), true);  // 境界(右下)
+  assert.strictEqual(pointInRect(99, 125, rect), false);
+  assert.strictEqual(pointInRect(125, 151, rect), false);
+});
+
+test('segmentIntersectsRect: 交差・非交差の判定', () => {
+  const rect = { x: 100, y: 100, w: 50, h: 50 };
+  // 水平に横断する
+  assert.strictEqual(segmentIntersectsRect(50, 125, 200, 125, rect), true);
+  // 矩形の上を平行に通る(かすらない)
+  assert.strictEqual(segmentIntersectsRect(50, 50, 200, 50, rect), false);
+  // 端点が内部にある
+  assert.strictEqual(segmentIntersectsRect(125, 125, 300, 300, rect), true);
+  // 完全に外側(斜めでも届かない)
+  assert.strictEqual(segmentIntersectsRect(0, 0, 50, 50, rect), false);
+  // 角から対角へ内部を通る
+  assert.strictEqual(segmentIntersectsRect(100, 100, 150, 150, rect), true);
 });

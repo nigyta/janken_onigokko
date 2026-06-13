@@ -11,6 +11,8 @@ const CAPTURE_RADIUS = 16; // 捕獲半径 px
 const MIN_SPEED = 5;       // 最低速度 px/秒
 const MAX_DT = 0.1;        // 1フレームの最大経過時間(秒)
 const FLEE_WEIGHT = 1.5;   // 逃走の重み係数(追跡は1.0)
+const OBSTACLE_MIN_SIZE = 40;  // 障害物の辺の最小 px
+const OBSTACLE_MAX_SIZE = 160; // 障害物の辺の最大 px
 
 // 正規分布乱数(Box-Muller法)。rand は注入可能(テスト用)
 function randNormal(mean, sd, rand = Math.random) {
@@ -20,6 +22,49 @@ function randNormal(mean, sd, rand = Math.random) {
   const u2 = rand();
   const z = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
   return mean + sd * z;
+}
+
+// 点が矩形内(境界含む)にあるか
+function pointInRect(x, y, rect) {
+  return x >= rect.x && x <= rect.x + rect.w && y >= rect.y && y <= rect.y + rect.h;
+}
+
+// 線分が矩形と交差するか(Liang-Barsky法)。端点が矩形内の場合も交差とみなす
+function segmentIntersectsRect(x1, y1, x2, y2, rect) {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  let t0 = 0;
+  let t1 = 1;
+  // [p, q] = [境界に向かう方向成分, 始点から境界までの距離]
+  const checks = [
+    [-dx, x1 - rect.x],            // 左境界
+    [dx, rect.x + rect.w - x1],    // 右境界
+    [-dy, y1 - rect.y],            // 上境界
+    [dy, rect.y + rect.h - y1],    // 下境界
+  ];
+  for (const [p, q] of checks) {
+    if (p === 0) {
+      if (q < 0) return false; // 境界に平行で外側
+    } else {
+      const t = q / p;
+      if (p < 0) {
+        if (t > t1) return false;
+        if (t > t0) t0 = t;
+      } else {
+        if (t < t0) return false;
+        if (t < t1) t1 = t;
+      }
+    }
+  }
+  return true;
+}
+
+// a と b の間に視線が通るか(どの障害物にも遮られない)
+function canSee(a, b, obstacles) {
+  for (const rect of obstacles) {
+    if (segmentIntersectsRect(a.x, a.y, b.x, b.y, rect)) return false;
+  }
+  return true;
 }
 
 class Agent {
@@ -163,5 +208,7 @@ if (typeof module !== 'undefined') {
     randNormal, Agent, Simulation,
     GROUPS, CATCHES, CAUGHT_BY,
     FIELD_WIDTH, FIELD_HEIGHT, CAPTURE_RADIUS, MIN_SPEED, MAX_DT, FLEE_WEIGHT,
+    pointInRect, segmentIntersectsRect, canSee,
+    OBSTACLE_MIN_SIZE, OBSTACLE_MAX_SIZE,
   };
 }
