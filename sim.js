@@ -191,6 +191,14 @@ class Simulation {
     return this.obstacles.some((rect) => pointInRect(x, y, rect));
   }
 
+  // (nx, ny) への移動がブロックされるか。
+  // 現在位置を含む障害物は判定免除(進入のみ禁止、脱出は常に許可)
+  blockedMove(agent, nx, ny) {
+    return this.obstacles.some(
+      (rect) => pointInRect(nx, ny, rect) && !pointInRect(agent.x, agent.y, rect)
+    );
+  }
+
   // グループごとの生存者数 { gu, choki, pa }
   aliveCounts() {
     const counts = { gu: 0, choki: 0, pa: 0 };
@@ -208,13 +216,22 @@ class Simulation {
     dt = Math.min(dt, MAX_DT);
     this.timeLeft -= dt;
 
-    // 移動(壁の内側にクランプ)
+    // 移動(壁の内側にクランプ、障害物には進入不可)
     for (const agent of this.agents) {
       if (!agent.alive) continue;
       const dir = agent.direction(this.agents, this.obstacles);
       if (!dir) continue;
-      agent.x = Math.min(Math.max(agent.x + dir.x * agent.speed * dt, 0), FIELD_WIDTH);
-      agent.y = Math.min(Math.max(agent.y + dir.y * agent.speed * dt, 0), FIELD_HEIGHT);
+      const nx = Math.min(Math.max(agent.x + dir.x * agent.speed * dt, 0), FIELD_WIDTH);
+      const ny = Math.min(Math.max(agent.y + dir.y * agent.speed * dt, 0), FIELD_HEIGHT);
+      // 軸分離スライド: そのまま → x のみ → y のみ の順に試し、全部ダメなら停止
+      if (!this.blockedMove(agent, nx, ny)) {
+        agent.x = nx;
+        agent.y = ny;
+      } else if (!this.blockedMove(agent, nx, agent.y)) {
+        agent.x = nx;
+      } else if (!this.blockedMove(agent, agent.x, ny)) {
+        agent.y = ny;
+      }
     }
 
     // 捕獲判定: 全ペアを収集してから一括除外する。

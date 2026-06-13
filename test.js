@@ -348,3 +348,32 @@ test('捕獲: 捕獲半径内でも壁が間にあれば不成立', () => {
   sim.tick(0.001);
   assert.strictEqual(prey.alive, true);
 });
+
+test('blockedMove: 進入のみ禁止(今いる障害物からの脱出・内部移動は許可)', () => {
+  const sim = makeEmptySim();
+  sim.obstacles = [
+    { x: 80, y: 80, w: 40, h: 40 },
+    { x: 200, y: 80, w: 40, h: 40 },
+  ];
+  const inside = new Agent('gu', 100, 100, 10); // 1つ目の障害物の中
+  assert.strictEqual(sim.blockedMove(inside, 105, 100), false); // 内部移動は許可
+  assert.strictEqual(sim.blockedMove(inside, 60, 100), false);  // 脱出は許可
+  assert.strictEqual(sim.blockedMove(inside, 210, 100), true);  // 別の障害物への進入は禁止
+  const outside = new Agent('gu', 50, 100, 10);
+  assert.strictEqual(sim.blockedMove(outside, 100, 100), true); // 外からの進入は禁止
+  assert.strictEqual(sim.blockedMove(outside, 55, 100), false); // 通常移動は許可
+});
+
+test('移動: 障害物に進入せず、壁に沿ってスライドする', () => {
+  const sim = makeEmptySim();
+  // x ∈ [40, 92], y ∈ [50, 150] の壁
+  sim.obstacles = [{ x: 40, y: 50, w: 52, h: 100 }];
+  const runner = new Agent('gu', 100, 100, 100);
+  const threat = new Agent('pa', 180, 160, 0); // 視線は通る(壁は x≤92 のみ)
+  sim.agents.push(runner, threat);
+  // 逃走方向 = normalize((-80, -60)) = (-0.8, -0.6)。dt=0.1, speed=100 → 候補 (92, 94)
+  sim.tick(0.1);
+  // (92, 94) は壁の中 → x成分(92,100)も壁の中 → y成分(100,94)だけ通る(スライド)
+  assert.strictEqual(runner.x, 100);
+  assert.ok(Math.abs(runner.y - 94) < 1e-9, `y=${runner.y}`);
+});
