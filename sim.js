@@ -14,6 +14,7 @@ const MAX_DT = 0.1;        // 1フレームの最大経過時間(秒)
 const FLEE_WEIGHT = 1.5;   // 逃走の重み係数(追跡は1.0)
 const OBSTACLE_MIN_SIZE = 40;  // 障害物の辺の最小 px
 const OBSTACLE_MAX_SIZE = 160; // 障害物の辺の最大 px
+const WANDER_TRIES = 8; // 詰まったときにランダム方向を探す最大試行回数
 
 // 正規分布乱数(Box-Muller法)。rand は注入可能(テスト用)
 function randNormal(mean, sd, rand = Math.random) {
@@ -77,6 +78,7 @@ class Agent {
     this.y = y;
     this.speed = speed;
     this.alive = true;
+    this.wanderAngle = null; // 詰まったときにさまよう向き(ラジアン)。未設定は null
   }
 
   distanceTo(other) {
@@ -270,6 +272,6 @@ if (typeof module !== 'undefined') {
     GROUPS, CATCHES, CAUGHT_BY,
     FIELD_WIDTH, FIELD_HEIGHT, CAPTURE_RADIUS, MIN_SPEED, MAX_SPEED, MAX_DT, FLEE_WEIGHT,
     pointInRect, segmentIntersectsRect, canSee,
-    OBSTACLE_MIN_SIZE, OBSTACLE_MAX_SIZE,
+    OBSTACLE_MIN_SIZE, OBSTACLE_MAX_SIZE, WANDER_TRIES,
   };
 }

@@ -6,7 +6,7 @@ const {
   GROUPS, CATCHES, CAUGHT_BY,
   FIELD_WIDTH, FIELD_HEIGHT, CAPTURE_RADIUS, MIN_SPEED, MAX_SPEED, MAX_DT, FLEE_WEIGHT,
   pointInRect, segmentIntersectsRect, canSee,
-  OBSTACLE_MIN_SIZE, OBSTACLE_MAX_SIZE,
+  OBSTACLE_MIN_SIZE, OBSTACLE_MAX_SIZE, WANDER_TRIES,
 } = require('./sim.js');
 
 test('randNormal: 平均と標準偏差が指定値に収束する', () => {
@@ -386,4 +386,13 @@ test('速度は MAX_SPEED でクランプされる(トンネリング防止)', (
   }
   // 1フレームの最大移動量が障害物最小サイズ未満であること
   assert.ok(MAX_SPEED * MAX_DT < OBSTACLE_MIN_SIZE, `step=${MAX_SPEED * MAX_DT}`);
+});
+
+test('Agent: 新規エージェントの wanderAngle は null', () => {
+  const a = new Agent('gu', 0, 0, 10);
+  assert.strictEqual(a.wanderAngle, null);
+});
+
+test('WANDER_TRIES が正の整数として公開されている', () => {
+  assert.ok(Number.isInteger(WANDER_TRIES) && WANDER_TRIES > 0, `WANDER_TRIES=${WANDER_TRIES}`);
 });
