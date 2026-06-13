@@ -213,8 +213,10 @@ Expected: FAIL — 4件中少なくとも3件が失敗(`wanderMove` 未実装の
 ```js
   // 詰まったエージェントをランダムな方向へ動かす。
   // 持続する wanderAngle 方向をまず試し、ブロックされたら引き直す(最大 WANDER_TRIES 回)。
-  // 動ける向きが見つかれば移動、見つからなければその場に留まる
+  // 動ける向きが見つかれば移動、見つからなければその場に留まる。
+  // 軸分離スライドは意図的に行わない(ランダムな向きの引き直しで脱出する設計)
   wanderMove(agent, dt) {
+    if (agent.speed === 0) return; // 速度0は動きようがない(乱数の空回しも避ける)
     for (let attempt = 0; attempt < WANDER_TRIES; attempt++) {
       if (agent.wanderAngle === null) {
         agent.wanderAngle = this.rand() * 2 * Math.PI;
@@ -276,8 +278,8 @@ Expected: FAIL — 4件中少なくとも3件が失敗(`wanderMove` 未実装の
           agent.y = ny;
         }
       }
-      // このフレームで1ピクセルも動けなかった(角に挟まれた / 盤面端 / 相手が見えない)
-      // 場合はランダムな方向に動いて膠着を脱出する
+      // このフレームで1ピクセルも動けなかった場合はランダムな方向に動いて膠着を脱出する。
+      // 該当ケース: 障害物の角に挟まれた / 盤面端でクランプされ位置不変 / 相手が見えず方向なし
       if (agent.x === ox && agent.y === oy) {
         this.wanderMove(agent, dt);
       }
