@@ -65,6 +65,10 @@
     <label>速度の標準偏差: <span id="sdValue">15</span> px/秒</label>
     <input type="range" id="sdSlider" min="0" max="100" value="15">
   </div>
+  <div>
+    <label>障害物の数: <span id="obsValue">5</span> 個</label>
+    <input type="range" id="obsSlider" min="0" max="15" value="5">
+  </div>
   <button id="startBtn">スタート</button>
   <button id="resetBtn">リセット</button>
   <div id="status">
@@ -93,6 +97,14 @@ const ctx = canvas.getContext('2d');
 
 function draw(sim) {
   ctx.clearRect(0, 0, FIELD_WIDTH, FIELD_HEIGHT);
+  // 障害物
+  ctx.fillStyle = '#2c2c54';
+  ctx.strokeStyle = '#44446e';
+  ctx.lineWidth = 1;
+  for (const r of sim.obstacles) {
+    ctx.fillRect(r.x, r.y, r.w, r.h);
+    ctx.strokeRect(r.x, r.y, r.w, r.h);
+  }
   ctx.font = '24px serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
@@ -116,6 +128,7 @@ const sliderPairs = [
   ['durSlider', 'durValue'],
   ['speedSlider', 'speedValue'],
   ['sdSlider', 'sdValue'],
+  ['obsSlider', 'obsValue'],
 ];
 for (const [sliderId, valueId] of sliderPairs) {
   $(sliderId).addEventListener('input', () => {
@@ -129,6 +142,7 @@ function readParams() {
     duration: Number($('durSlider').value),
     meanSpeed: Number($('speedSlider').value),
     speedSd: Number($('sdSlider').value),
+    obstacleCount: Number($('obsSlider').value),
   };
 }
 
