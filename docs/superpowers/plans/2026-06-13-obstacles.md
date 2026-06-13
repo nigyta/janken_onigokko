@@ -207,6 +207,8 @@ test('障害物: obstacleCount未指定なら0個(従来挙動)', () => {
 });
 
 test('障害物: エージェントは障害物の外に配置される', () => {
+  // 注: findSpawnPoint の最終フォールバックは理論上障害物内を返し得るが、
+  // この条件(障害物カバー率 ≤ 53%)で200回の再抽選が全部外れる確率は ~10^-55 で実質ゼロ
   const sim = new Simulation({ n: 30, duration: 60, meanSpeed: 80, speedSd: 15, obstacleCount: 10 });
   for (const a of sim.agents) {
     assert.ok(!sim.obstacles.some((r) => pointInRect(a.x, a.y, r)), `(${a.x}, ${a.y})`);
