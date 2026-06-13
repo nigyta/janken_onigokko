@@ -79,6 +79,10 @@ test('segmentIntersectsRect: 交差・非交差の判定', () => {
   assert.strictEqual(segmentIntersectsRect(0, 0, 50, 50, rect), false);
   // 角から対角へ内部を通る
   assert.strictEqual(segmentIntersectsRect(100, 100, 150, 150, rect), true);
+  // 外から来て角にちょうど触れて終わる
+  assert.strictEqual(segmentIntersectsRect(50, 50, 100, 100, rect), true);
+  // 角の直前で止まる(触れない)
+  assert.strictEqual(segmentIntersectsRect(0, 0, 99, 99, rect), false);
 });
 ```
 
@@ -105,19 +109,21 @@ function pointInRect(x, y, rect) {
 }
 
 // 線分が矩形と交差するか(Liang-Barsky法)。端点が矩形内の場合も交差とみなす
+// 毎フレーム大量に呼ばれるため、配列を生成しないループ展開で実装している
 function segmentIntersectsRect(x1, y1, x2, y2, rect) {
   const dx = x2 - x1;
   const dy = y2 - y1;
   let t0 = 0;
   let t1 = 1;
-  // [p, q] = [境界に向かう方向成分, 始点から境界までの距離]
-  const checks = [
-    [-dx, x1 - rect.x],            // 左境界
-    [dx, rect.x + rect.w - x1],    // 右境界
-    [-dy, y1 - rect.y],            // 上境界
-    [dy, rect.y + rect.h - y1],    // 下境界
-  ];
-  for (const [p, q] of checks) {
+  // 各境界(左・右・上・下)で線分のパラメータ範囲 [t0, t1] をクリップする
+  // p = 境界に向かう方向成分, q = 始点から境界までの距離
+  for (let i = 0; i < 4; i++) {
+    let p;
+    let q;
+    if (i === 0) { p = -dx; q = x1 - rect.x; }              // 左境界
+    else if (i === 1) { p = dx; q = rect.x + rect.w - x1; } // 右境界
+    else if (i === 2) { p = -dy; q = y1 - rect.y; }         // 上境界
+    else { p = dy; q = rect.y + rect.h - y1; }              // 下境界
     if (p === 0) {
       if (q < 0) return false; // 境界に平行で外側
     } else {
