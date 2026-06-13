@@ -92,6 +92,8 @@ class Agent {
       const d = this.distanceTo(a);
       if (d >= minDist) continue;
       if (!canSee(this, a, obstacles)) continue;
+      // minDist は「見える候補」でのみ更新する。これにより、より近いが見えない相手が
+      // いても、より遠い見える相手が誤って除外されることはない(枝刈りと正しさが両立)
       minDist = d;
       nearest = a;
     }
