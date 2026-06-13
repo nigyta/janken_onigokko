@@ -155,13 +155,14 @@ function drawGraph(sim) {
   gctx.fillStyle = '#888';
   gctx.font = '11px sans-serif';
   gctx.textAlign = 'right';
+  gctx.textBaseline = 'top';
+  gctx.fillText(String(n), left - 6, top);     // y上端 = 初期人数 n(上端で見切れないよう top 基準)
   gctx.textBaseline = 'middle';
-  gctx.fillText(String(n), left - 6, top);    // y上端 = 初期人数 n
-  gctx.fillText('0', left - 6, bottom);        // y下端 = 0
+  gctx.fillText('0', left - 6, bottom);         // y下端 = 0
   gctx.textAlign = 'center';
   gctx.textBaseline = 'top';
   gctx.fillText('0s', left, bottom + 4);              // x左端
-  gctx.fillText(duration + 's', right, bottom + 4);   // x右端
+  gctx.fillText(`${duration}s`, right, bottom + 4);   // x右端
 
   if (n <= 0 || duration <= 0) return; // 0除算防止(折れ線は描かない)
 
