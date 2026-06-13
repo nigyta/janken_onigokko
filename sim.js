@@ -15,6 +15,7 @@ const FLEE_WEIGHT = 1.5;   // 逃走の重み係数(追跡は1.0)
 const OBSTACLE_MIN_SIZE = 40;  // 障害物の辺の最小 px
 const OBSTACLE_MAX_SIZE = 160; // 障害物の辺の最大 px
 const WANDER_TRIES = 8; // 詰まったときにランダム方向を探す最大試行回数
+const SAMPLE_INTERVAL = 0.5; // 人数推移グラフのサンプリング間隔(秒)
 
 // 正規分布乱数(Box-Muller法)。rand は注入可能(テスト用)
 function randNormal(mean, sd, rand = Math.random) {
@@ -135,6 +136,9 @@ class Simulation {
     this.timeLeft = params.duration;
     this.finished = false;
     this.winner = null; // グループ識別子 | 'draw' | null(進行中)
+    this.elapsed = 0;                    // 経過時間(秒)。人数推移のサンプリングに使う
+    this.nextSampleAt = SAMPLE_INTERVAL; // 次にサンプルを取る経過時刻(秒)
+    this.history = [];                   // 人数推移 [{ t, gu, choki, pa }]。末尾で開始点を記録
     this.agents = [];
 
     // 障害物を先に生成(エージェント配置が障害物を避けるため)。重なりは許容
@@ -169,6 +173,7 @@ class Simulation {
         this.agents.push(new Agent(group, x, y, speed));
       }
     }
+    this.pushSample(); // 開始時点(t=0、全グループ params.n 人)を記録
   }
 
   // 障害物の外のスポーン位置を探す。
@@ -231,6 +236,12 @@ class Simulation {
       if (a.alive) counts[a.group]++;
     }
     return counts;
+  }
+
+  // 現在の経過時刻と生存人数を人数推移の履歴に1点追加する
+  pushSample() {
+    const counts = this.aliveCounts();
+    this.history.push({ t: this.elapsed, gu: counts.gu, choki: counts.choki, pa: counts.pa });
   }
 
   // dt 秒ぶんシミュレーションを進める(移動 → 捕獲判定 → 終了判定)
@@ -302,6 +313,6 @@ if (typeof module !== 'undefined') {
     GROUPS, CATCHES, CAUGHT_BY,
     FIELD_WIDTH, FIELD_HEIGHT, CAPTURE_RADIUS, MIN_SPEED, MAX_SPEED, MAX_DT, FLEE_WEIGHT,
     pointInRect, segmentIntersectsRect, canSee,
-    OBSTACLE_MIN_SIZE, OBSTACLE_MAX_SIZE, WANDER_TRIES,
+    OBSTACLE_MIN_SIZE, OBSTACLE_MAX_SIZE, WANDER_TRIES, SAMPLE_INTERVAL,
   };
 }
